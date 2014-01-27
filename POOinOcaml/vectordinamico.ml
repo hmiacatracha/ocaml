@@ -1,0 +1,216 @@
+
+
+let rec insertar lista i elemento =
+match (i=0) with
+   true-> elemento::lista
+  |false -> match lista with
+           []->[]
+          |h::t->h::(insertar t (i-1) elemento);;      
+              
+let partirLista lista n=
+  let rec aux lista n l acc= match lista with
+     [] -> l
+    |h::t->if acc=n then l else aux t n (h::l) (acc+1)  
+  in List.rev (aux lista n [] 0);;    
+    
+let busposiIzq elem l=
+  let rec indice elem l n= match l with
+    []->(-1)
+    |h::t-> if (h=elem) then n else indice elem t (n+1)
+  in indice elem l 0;;
+ 
+(*imprime los elementos del vector*) 
+let print l=
+ let rec escribir concat l = match l with
+   []->concat^"]"
+   |h::t-> if concat = "[" then escribir (concat ^ string_of_int(h)) t
+   else escribir (concat^","^string_of_int(h)) t
+  in escribir "[" l;;
+  
+(*imprime todo el vecto, incluido los huecos vacíos.*)  
+let printB buffer numEltos=
+let acum=ref "[" in
+ for i = 0 to (numEltos-1) do
+   if i=(numEltos-2) then acum:=(!acum^(string_of_int buffer.(i))^",") 
+   else acum:=(!acum^(string_of_int buffer.(i)))
+done;
+    
+for i = numEltos to (Array.length buffer) do
+ if i=(Array.length buffer)  then  acum:=((!acum)^"_")
+ else  acum:=((!acum)^"_"^",");
+done;
+  acum:=(!acum)^"]";
+  !acum;;
+
+
+(*VECTOR DINÁMICO*)
+class vectordinamico tamano_bloque =
+object 
+  val mutable buffer=Array.make tamano_bloque 0
+  val mutable numEltos= 0
+  val tb=tamano_bloque
+  
+  (**metodo de modificacion**)
+  (* Anadir un elemento al final del vector actual.
+   annade: int → unit *)
+  method annade elemento=
+         match (((numEltos mod tb) = 0)&&(numEltos <> 0)) with
+         |true-> let nBuffer=ref (Array.append buffer (Array.make tb 0)) in
+				 Array.set !nBuffer numEltos elemento;
+				 numEltos <- numEltos+1;
+				 buffer <- (!nBuffer)
+				 
+         |false->Array.set buffer numEltos elemento;
+         		 numEltos <- numEltos+1; 
+                 
+  (* Insertar en la posicion i (1er argumento) del vector actual un elemento dado (2o 
+   argumento) desplazando en una posicion a la derecha todos los elementos desde el i­esimo 
+   hasta el ultimo. Si la posicion no es valida se lanza una excepcion Invalid_argument "index 
+   out of bounds".
+   inserta: int → int → unit *)
+        
+  method inserta i elemento= if (i >= numEltos) or (i<0) then raise (Invalid_argument "index out bouds") 
+                   else ( 
+                          match (((numEltos mod tb) == 0)&&(numEltos <> 0)) with 
+                         |true-> 
+                             let nBuffer=ref (Array.append buffer (Array.make tb 0)) in
+                             buffer <- (!nBuffer);
+                             let lista = Array.to_list buffer  in
+                             let l = (insertar lista i elemento) in
+                             buffer <- (Array.of_list (List.rev (List.tl (List.rev l))));
+				             numEltos <- numEltos+1;
+                         |false->
+                              let lista = Array.to_list buffer  in
+                              let l = (insertar lista i elemento) in
+                              buffer <- (Array.of_list (List.rev (List.tl (List.rev l))));
+				              numEltos <- numEltos+1;
+                       
+                        )
+   (* Sobreescribir  la posicion i (1er argumento) con un elemento dado (2o argumento). No 
+    cambia el numero total de elementos. Si la posicion no es valida se lanza una excepcion 
+    Invalid_argument "index out of bounds".    sobreescribe: int → int → unit *)
+                        
+  method sobreescribe i elemento= if i < numEltos then Array.set buffer i elemento else raise(Invalid_argument "index out of bounds") 
+  
+  (**metodos de consulta**)
+  (* Devolver la longitud actual del vector, es decir, el numero de elementos almacenados.
+   longitud: unit → int *)
+  method longitud() = numEltos
+  
+  (* Devolver el i­esimo elemento del vector. Si la posicion no es valida se lanza una 
+   excepcion Invalid_argument "index out of bounds".   elemento: int → int *)  
+  method elemento i=  if (i>numEltos) or (i<0) then raise (Invalid_argument "index out bouds") else Array.get buffer i  
+  
+  (* Devolver la primera posicion por la izquierda en la que aparece un elemento dado. Si no  
+   estuviera en el array, entonces devuelve ­1 sin mas.    indice: int → int *)
+  method indice i=
+                (
+                   let lista = partirLista (Array.to_list buffer) numEltos in
+                   let indice=busposiIzq i lista in
+                   indice
+                )
+  (* Imprimir el contenido del vector en un string (i.e. sólo imprime la parte que contiene 
+     elementos)     to_string: unit → string *)                
+  method to_string()=if numEltos=0 then print [] 
+                     else(
+                           let lista =partirLista (Array.to_list buffer) numEltos in
+                           print lista                         
+                         )
+  (* Imprimir el contenido de la estructura de almacenamiento del vector en un string (i.e. 
+  imprime tanto la parte que contiene elementos como la que no contiene elementos, ésta última 
+  indicada con un guión bajo por posición)
+  to_stringBuffer: unit → string *)                         
+  method to_stringBuffer()= printB buffer numEltos
+end;;
+
+(** EJECUCION EJEMPLO 															
+																			    
+						        											 **) 
+ 
+ (*# #use "vectordinamico.ml";;
+class vectordinamico :
+  int ­>
+  object
+    val mutable buffer : int array
+    val mutable numEltos : int
+    val tb : int
+    method annade : int ­> unit
+    method elemento : int ­> int
+    method indice : int ­> int
+    method inserta : int ­> int ­> unit
+    method longitud : unit ­> int
+    method sobreescribe : int ­> int ­> unit
+    method to_string : unit ­> string
+    method to_stringBuffer : unit ­> string
+  end
+# let prueba = new vectordinamico 5;;
+val prueba : vectordinamico = <obj>
+# prueba#longitud();;
+­ : int = 0
+# prueba#to_string();;
+­ : string = "[]"
+# prueba#to_stringBuffer();;
+­ : string = "[_,_,_,_,_]"
+# prueba#annade 10;;
+­ : unit = ()
+# prueba#longitud();;
+­ : int = 1
+# prueba#to_string();;
+­ : string = "[10]"
+# prueba#to_stringBuffer();;
+­ : string = "[10,_,_,_,_]"
+# prueba#annade 30;;
+­ : unit = ()
+# prueba#annade 40;;
+­ : unit = ()
+# prueba#inserta 4 20;;
+Exception: Invalid_argument "index out of bounds".
+# prueba#inserta 1 20;;
+­ : unit = ()
+# prueba#longitud();;
+­ : int = 4
+# prueba#to_string();;
+­ : string = "[10,20,30,40]"
+# prueba#to_stringBuffer();;
+­ : string = "[10,20,30,40,_]"
+# prueba#annade 50;;
+­ : unit = ()
+# prueba#to_string();;
+­ : string = "[10,20,30,40,50]"
+# prueba#to_stringBuffer();;
+­ : string = "[10,20,30,40,50]"
+# prueba#annade 60;;
+­ : unit = ()
+# prueba#to_string();;
+­ : string = "[10,20,30,40,50,60]"
+# prueba#to_stringBuffer();;
+­ : string = "[10,20,30,40,50,60,_,_,_,_]"# prueba#sobreescribe 1 22;;
+­ : unit = ()
+# prueba#to_string();;
+­ : string = "[10,22,30,40,50,60]"
+# prueba#to_stringBuffer();;
+­ : string = "[10,22,30,40,50,60,_,_,_,_]"
+# prueba#sobreescribe 100 100;;
+Exception: Invalid_argument "index out of bounds".
+# prueba#elemento 7;;
+Exception: Invalid_argument "index out of bounds".
+# prueba#elemento 1;;
+­ : int = 22
+# prueba#indice 30;;
+­ : int = 2
+# prueba#indice 100;;
+­ : int = ­1
+# prueba#indice 0;;
+­ : int = ­1*)
+ 
+ 
+ 
+ 
+  
+  
+ 
+ 
+ 
+ 
+
+	
